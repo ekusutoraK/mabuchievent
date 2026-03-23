@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>【操作】ファイブボンバー・コントローラー</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        h1 { font-size: 20px; border-left: 5px solid #2980b9; padding-left: 10px; }
+        button { cursor: pointer; border: none; border-radius: 6px; transition: 0.2s; font-weight: bold; }
+        .btn-main { background: #2980b9; color: white; width: 100%; padding: 15px; font-size: 18px; margin-bottom: 20px; }
+        .btn-next { background: #27ae60; color: white; padding: 10px 20px; }
+        .btn-start { background: #e67e22; color: white; padding: 10px 20px; }
+        .btn-correct { background: #f1c40f; color: #333; padding: 15px; flex: 1; min-width: 80px; font-size: 16px; }
+        .btn-reset { background: #95a5a6; color: white; padding: 10px; font-size: 12px; }
+        .controls { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        .info { background: #e8f4fd; padding: 10px; border-radius: 5px; margin: 10px 0; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>1. 準備</h1>
+    <button class="btn-main" onclick="openMain()">メイン画面（投影用）を別窓で開く</button>
+    <p style="font-size: 12px; color: #666;">※開いた窓をプロジェクター側に移動させてください。</p>
+
+    <hr>
+
+    <h1>2. クイズ操作</h1>
+    <div class="info" id="current-info">問題を選択してください</div>
+    <button class="btn-next" onclick="nextQuestion()">次の問題を表示</button>
+    <button class="btn-start" onclick="startTimer()">タイマー開始</button>
+    
+    <div class="controls" id="correct-btns">
+        </div>
+
+    <hr>
+    <button class="btn-reset" onclick="resetGame()">現在の問題をリセット</button>
+</div>
+
+<script>
+    let mainWindow = null;
+    let timerId = null;
+    let timeLeft = 30;
+    let currentQIndex = -1;
+
+    // ★ここで問題を自由に追加・編集できます！
+    const questions = [
+        { title: "「三ずい」の漢字を5つ答えろ！", count: 5 },
+        { title: "太陽系の惑星を太陽に近い順に5つ答えろ！", count: 5 },
+        { title: "日本の政令指定都市を5つ答えろ！", count: 5 },
+        { title: "不規則動詞（go, eat等）の過去形を5つ！", count: 5 }
+    ];
+
+    function openMain() {
+        // GitHub Pagesでも動くように相対パスを指定
+        mainWindow = window.open('./main.html', 'bomberMain', 'width=1000,height=700');
+    }
+
+    function nextQuestion() {
+        if (!mainWindow || mainWindow.closed) { alert("先にメイン画面を開いてください"); return; }
+        currentQIndex++;
+        if (currentQIndex >= questions.length) { alert("全ての問題が終了しました！"); return; }
+        
+        resetGame();
+        const q = questions[currentQIndex];
+        document.getElementById('current-info').innerText = `第 ${currentQIndex + 1} 問：${q.title}`;
+        
+        // メイン画面へ指示
+        mainWindow.postMessage({ type: 'setup', title: q.title, count: q.count }, '*');
+        
+        // 手元のボタン生成
+        const btnArea = document.getElementById('correct-btns');
+        btnArea.innerHTML = '';
+        for(let i=1; i<=q.count; i++) {
+            btnArea.innerHTML += `<button class="btn-correct" onclick="sendCorrect(${i})">${i}人目 正解!</button>`;
+        }
+    }
+
+    function startTimer() {
+        if (timerId || !mainWindow) return;
+        timerId = setInterval(() => {
+            timeLeft--;
+            mainWindow.postMessage({ type: 'tick', time: timeLeft }, '*');
+            if (timeLeft <= 0) {
+                clearInterval(timerId);
+                mainWindow.postMessage({ type: 'bomb' }, '*');
+            }
+        }, 1000);
+    }
+
+    function sendCorrect(num) {
+        if (mainWindow) mainWindow.postMessage({ type: 'correct', num: num }, '*');
+    }
+
+    function resetGame() {
+        clearInterval(timerId);
+        timerId = null;
+        timeLeft = 30;
+        if (mainWindow) mainWindow.postMessage({ type: 'reset' }, '*');
+    }
+</script>
+</body>
+</html>
