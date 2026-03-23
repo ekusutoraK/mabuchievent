@@ -4,24 +4,59 @@
     <meta charset="UTF-8">
     <title>ファイブボンバー：メインステージ</title>
     <style>
-        body { background: #000; color: #fff; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; text-align: center; margin: 0; overflow: hidden; }
-        #q-area { background: linear-gradient(to bottom, #1a1a1a, #000); padding: 40px 20px; border-bottom: 4px solid #f1c40f; }
+        body { background: #000; color: #fff; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; }
+        
+        /* 問題エリア */
+        #q-area { background: rgba(0,0,0,0.8); padding: 30px; border-bottom: 4px solid #f1c40f; position: relative; z-index: 10; }
         #q-title { font-size: 48px; font-weight: bold; color: #f1c40f; text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
-        #timer { font-size: 180px; color: #ff3e3e; font-weight: bold; font-family: 'Courier New', monospace; margin: 10px 0; }
-        .boxes { display: flex; justify-content: center; gap: 20px; padding: 40px; }
+        
+        /* タイマーエリア */
+        #timer-area { position: absolute; top: 120px; right: 30px; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 10px; border: 2px solid #ff3e3e; }
+        #timer { font-size: 100px; color: #ff3e3e; font-weight: bold; font-family: 'Courier New', monospace; margin: 0; }
+        
+        /* 解答枠エリア */
+        .boxes { display: flex; justify-content: center; gap: 20px; padding: 40px; position: absolute; bottom: 50px; width: 100%; box-sizing: border-box; z-index: 10; }
         .answer-box {
             width: 160px; height: 110px; border: 4px solid #444; background: #222;
             font-size: 50px; display: flex; align-items: center; justify-content: center;
-            border-radius: 12px; transition: 0.3s; color: #555;
+            border-radius: 12px; transition: 0.3s; color: #555; position: relative;
         }
         .correct { 
             background: linear-gradient(145deg, #f1c40f, #e67e22); 
             color: #fff; border-color: #fff; 
             transform: scale(1.1); box-shadow: 0 0 40px #f39c12;
         }
+
+        /* ★爆弾の演出 */
+        #bomb-container {
+            position: absolute;
+            top: -350px; /* 初期位置（画面外上部） */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 300px;
+            z-index: 5;
+            transition: top 0.5s linear; /* スムーズな落下用 */
+        }
+        
+        /* 爆弾の本体（鼓動アニメーション付き） */
+        #bomb-body {
+            font-size: 250px;
+            line-height: 300px;
+            filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.7));
+            animation: beat 1s infinite alternate; /* 鼓動 */
+        }
+        
+        /* 鼓動（ドクドク）アニメーション定義 */
+        @keyframes beat {
+            0% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.7)); }
+            100% { transform: scale(1.1); filter: drop-shadow(0 0 50px rgba(255, 0, 0, 1)); }
+        }
+
+        /* 爆発オーバーレイ */
         #bomb-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,0,0,0.8); display: none;
+            background: rgba(255,0,0,0.9); display: none;
             align-items: center; justify-content: center; z-index: 1000;
         }
         #bomb-text { font-size: 150px; color: yellow; font-weight: bold; transform: rotate(-10deg); text-shadow: 10px 10px #000; }
@@ -32,7 +67,14 @@
     <div id="q-area">
         <div id="q-title">READY...</div>
     </div>
-    <div id="timer">30</div>
+    <div id="timer-area">
+        <div id="timer">30</div>
+    </div>
+
+    <div id="bomb-container">
+        <div id="bomb-body">💣</div>
+    </div>
+
     <div class="boxes" id="box-container"></div>
     
     <div id="bomb-overlay">
@@ -40,28 +82,52 @@
     </div>
 
     <script>
+        const bombContainer = document.getElementById('bomb-container');
+        const startTop = -350; // 開始位置
+        const endTop = 150;    // 落下位置（解答枠の上あたり）
+        const totalTime = 30; // 全体の制限時間
+
         window.addEventListener('message', (e) => {
             const d = e.data;
             if (d.type === 'setup') {
+                // 問題セットアップ
                 document.getElementById('q-title').innerText = d.title;
                 const container = document.getElementById('box-container');
                 container.innerHTML = '';
                 for(let i=1; i<=d.count; i++) {
                     container.innerHTML += `<div class="answer-box" id="box${i}">${i}</div>`;
                 }
+                // 爆弾リセット
+                bombContainer.style.top = startTop + 'px';
+                bombContainer.style.display = 'block';
                 document.getElementById('bomb-overlay').style.display = 'none';
-                document.getElementById('timer').innerText = "30";
+                document.getElementById('timer').innerText = totalTime;
             } else if (d.type === 'tick') {
+                // タイマー更新
                 document.getElementById('timer').innerText = d.time;
+                // ★爆弾の落下計算（残り時間に合わせてtop位置を調整）
+                const progress = (totalTime - d.time) / totalTime; // 0.0 ～ 1.0
+                const currentTop = startTop + (endTop - startTop) * progress;
+                bombContainer.style.top = currentTop + 'px';
             } else if (d.type === 'correct') {
+                // 正解演出
                 const box = document.getElementById('box' + d.num);
                 if (box) box.classList.add('correct');
+                // 全員正解なら爆弾を上へ逃がす
+                if (document.querySelectorAll('.correct').length === document.querySelectorAll('.answer-box').length) {
+                    bombContainer.style.top = startTop + 'px';
+                }
             } else if (d.type === 'bomb') {
+                // 爆発演出
+                bombContainer.style.display = 'none';
                 document.getElementById('bomb-overlay').style.display = 'flex';
             } else if (d.type === 'reset') {
+                // リセット
                 document.querySelectorAll('.answer-box').forEach(b => b.classList.remove('correct'));
                 document.getElementById('bomb-overlay').style.display = 'none';
-                document.getElementById('timer').innerText = "30";
+                document.getElementById('timer').innerText = totalTime;
+                bombContainer.style.top = startTop + 'px';
+                bombContainer.style.display = 'block';
             }
         });
     </script>
