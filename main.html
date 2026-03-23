@@ -14,26 +14,27 @@
             height: 100vh; 
         }
         
-        /* 問題表示エリア */
+        /* 問題エリア */
         #q-area { 
             background: rgba(20,20,20,0.95); 
-            padding: 30px; 
+            padding: 25px; 
             border-bottom: 5px solid #f1c40f; 
             z-index: 10; 
             position: relative; 
             box-shadow: 0 5px 20px rgba(0,0,0,0.5);
         }
         #q-title { 
-            font-size: 45px; 
+            font-size: 40px; 
             font-weight: bold; 
             color: #f1c40f; 
+            margin: 0;
             text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
         }
         
-        /* タイマー表示 */
+        /* タイマーエリア */
         #timer-area { 
             position: absolute; 
-            top: 130px; 
+            top: 120px; 
             right: 40px; 
             z-index: 10; 
             border: 3px solid #ff3e3e; 
@@ -42,58 +43,58 @@
             background: rgba(0,0,0,0.8); 
         }
         #timer { 
-            font-size: 90px; 
+            font-size: 80px; 
             color: #ff3e3e; 
             font-weight: bold; 
             font-family: 'Courier New', monospace; 
             margin: 0;
         }
         
-        /* 解答枠（1〜5） */
+        /* 解答枠エリア */
         .boxes { 
             display: flex; 
             justify-content: center; 
-            gap: 30px; 
+            gap: 25px; 
             position: absolute; 
-            bottom: 80px; 
+            bottom: 70px; 
             width: 100%; 
             z-index: 10; 
         }
         .answer-box {
-            width: 180px; 
-            height: 120px; 
+            width: 170px; 
+            height: 110px; 
             border: 4px solid #444; 
             background: #111;
-            font-size: 60px; 
+            font-size: 50px; 
             display: flex; 
             align-items: center; 
             justify-content: center;
             border-radius: 15px; 
             transition: 0.3s; 
             color: #333;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
-        /* 正解時の光る演出 */
         .correct { 
             background: linear-gradient(145deg, #f1c40f, #e67e22); 
             color: #fff !important; 
             border-color: #fff; 
-            box-shadow: 0 0 40px #f1c40f, inset 0 0 10px white;
+            box-shadow: 0 0 30px #f1c40f;
             transform: scale(1.05);
         }
 
-        /* 爆弾のデザインと動き */
+        /* ★爆弾画像のデザインと動き */
         #bomb-container {
             position: absolute;
-            width: 200px; /* この幅の半分(100)を計算で使用 */
-            height: 200px;
+            width: 220px; /* ★画像のサイズ */
+            height: 220px;
             z-index: 5;
-            /* 左右のスライドはスムーズに、上下の落下はリニアに */
             transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.1s linear; 
         }
-        #bomb-body {
-            font-size: 180px;
-            line-height: 200px;
+        
+        /* 画像本体の設定（鼓動アニメーション付き） */
+        #bomb-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* アスペクト比を維持 */
             animation: beat 0.8s infinite alternate;
             filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.6));
         }
@@ -101,21 +102,21 @@
         /* 鼓動（ドクドク）アニメーション */
         @keyframes beat {
             0% { transform: scale(1); }
-            100% { transform: scale(1.2); filter: drop-shadow(0 0 40px red); }
+            100% { transform: scale(1.15); filter: drop-shadow(0 0 35px red); }
         }
 
-        /* 爆発時のオーバーレイ */
+        /* 爆発オーバーレイ */
         #bomb-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(200,0,0,0.9); display: none;
             align-items: center; justify-content: center; z-index: 1000;
         }
         #bomb-text { 
-            font-size: 180px; 
+            font-size: 160px; 
             color: #f1c40f; 
             font-weight: bold; 
             transform: rotate(-10deg); 
-            text-shadow: 10px 10px 0px #000;
+            text-shadow: 8px 8px 0px #000;
             animation: shake 0.1s infinite;
         }
         @keyframes shake {
@@ -127,15 +128,15 @@
 <body>
 
     <div id="q-area">
-        <div id="q-title">READY...</div>
+        <p id="q-title">READY...</p>
     </div>
 
     <div id="timer-area">
-        <div id="timer">30</div>
+        <p id="timer">30</p>
     </div>
 
     <div id="bomb-container">
-        <div id="bomb-body">💣</div>
+        <img src="./bomb.png" id="bomb-image" alt="bomb">
     </div>
 
     <div class="boxes" id="box-container"></div>
@@ -148,10 +149,13 @@
         let currentTargetIdx = 1; 
         let totalQuestions = 5;
         
-        // ★位置の微調整用変数
-        const startY = 80;  // 開始時の高さ
-        // 爆発ライン（画面の下からどれくらい離すか。450だと枠の少し上になります）
-        const deadLineY = window.innerHeight - 450; 
+        // ★位置の微調整用変数（爆弾が画像になったので、開始位置を少し高く設定）
+        const startY = 60;  // 開始時の高さ
+        // 爆発ライン（画面の下からどれくらい離すか。480だと枠の少し上になります）
+        const deadLineY = window.innerHeight - 480; 
+        
+        // ★画像の幅(220px)の半分（110）を計算で使用します
+        const halfBombWidth = 110;
 
         function updateBombPosition(timeLeft) {
             const bomb = document.getElementById('bomb-container');
@@ -160,13 +164,12 @@
             if (targetBox) {
                 const rect = targetBox.getBoundingClientRect();
                 
-                // 【横位置計算】
-                // 枠の左端(rect.left) + 枠の幅の半分(rect.width/2) - 爆弾の幅の半分(100)
-                const targetX = rect.left + (rect.width / 2) - 100; 
+                // 【横位置計算】枠の中心 － 画像の幅の半分(110)
+                const targetX = rect.left + (rect.width / 2) - halfBombWidth; 
                 bomb.style.left = targetX + 'px';
 
                 // 【縦位置計算】
-                const progress = (30 - timeLeft) / 30; // 0.0(開始)〜1.0(終了)
+                const progress = (30 - timeLeft) / 30; // 0.0〜1.0
                 const currentY = startY + (deadLineY - startY) * progress;
                 bomb.style.top = currentY + 'px';
             }
@@ -185,10 +188,9 @@
                 }
                 document.getElementById('bomb-overlay').style.display = 'none';
                 document.getElementById('timer').innerText = "30";
-                document.getElementById('bomb-container').style.display = 'block';
                 
-                // 少し遅らせて1人目の位置へ移動（要素が描画されるのを待つため）
-                setTimeout(() => updateBombPosition(30), 100); 
+                // 画像読み込み完了を待たずに位置更新を予約
+                setTimeout(() => updateBombPosition(30), 150); 
 
             } else if (d.type === 'tick') {
                 document.getElementById('timer').innerText = d.time;
@@ -198,15 +200,15 @@
                 const box = document.getElementById('box' + d.num);
                 if (box) box.classList.add('correct');
                 
-                // 次の人へ移動
                 if (d.num < totalQuestions) {
                     currentTargetIdx = d.num + 1;
                     const currentTime = parseInt(document.getElementById('timer').innerText);
                     updateBombPosition(currentTime);
                 } else {
                     // 全員正解！爆弾を上に消す
-                    document.getElementById('bomb-container').style.transition = 'top 0.5s ease-in';
-                    document.getElementById('bomb-container').style.top = '-300px';
+                    const bomb = document.getElementById('bomb-container');
+                    bomb.style.transition = 'top 0.8s ease-in, left 0.4s ease-out';
+                    bomb.style.top = '-400px';
                 }
 
             } else if (d.type === 'bomb') {
@@ -220,8 +222,10 @@
 
         // ウィンドウサイズが変わったときにも位置を補正
         window.onresize = () => {
-            const currentTime = parseInt(document.getElementById('timer').innerText);
-            updateBombPosition(currentTime);
+            if(document.getElementById('box1')) {
+                const currentTime = parseInt(document.getElementById('timer').innerText);
+                updateBombPosition(currentTime);
+            }
         };
     </script>
 </body>
