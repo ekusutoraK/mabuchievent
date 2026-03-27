@@ -35,8 +35,8 @@
         let isFinish = false;
         
         const startY = 40; 
-        // ★ご要望通り、画面下から280pxの位置を終点に設定
-        let deadLineY = window.innerHeight - 280; 
+        // ★ 360px に変更
+        let deadLineY = window.innerHeight - 360; 
 
         function updateBombPosition(timeLeft) {
             if (isFinish) return; 
@@ -70,7 +70,7 @@
                 bomb.style.transition = 'none';
                 bomb.style.top = startY + 'px';
                 
-                deadLineY = window.innerHeight - 280; 
+                deadLineY = window.innerHeight - 360; 
 
                 requestAnimationFrame(() => {
                     setTimeout(() => {
@@ -117,7 +117,7 @@
         });
 
         window.onresize = () => {
-            deadLineY = window.innerHeight - 280; 
+            deadLineY = window.innerHeight - 360; 
             const currentTime = parseInt(document.getElementById('timer').innerText);
             updateBombPosition(currentTime);
         };
