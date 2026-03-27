@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>ファイブボンバー：管理・操作パネル</title>
+    <title>操作パネル：ファイブボンバー</title>
     <style>
         body { font-family: sans-serif; background: #f4f7f9; padding: 20px; display: flex; gap: 20px; }
         .panel { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); flex: 1; }
@@ -11,17 +11,17 @@
         button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 5px; font-weight: bold; transition: 0.2s; }
         .btn-add { background: #27ae60; color: white; }
         .btn-main { background: #2980b9; color: white; width: 100%; font-size: 16px; margin-bottom: 15px; }
-        .btn-start { background: #e67e22; color: white; }
-        .btn-correct { background: #f1c40f; min-width: 60px; height: 50px; }
-        .q-list { margin-top: 15px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
-        .q-item { font-size: 12px; margin-bottom: 5px; display: flex; justify-content: space-between; background: #eee; padding: 5px; }
-        .delete-btn { color: red; cursor: pointer; margin-left: 10px; }
+        .btn-start { background: #e67e22; color: white; padding: 15px; width: 100%; font-size: 18px; margin: 10px 0; }
+        .btn-correct { background: #bdc3c7; min-width: 70px; height: 60px; font-size: 16px; }
+        .active-correct { background: #27ae60 !important; color: white; }
+        .q-list { margin-top: 15px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; font-size: 13px; }
+        .q-item { margin-bottom: 5px; display: flex; justify-content: space-between; background: #eee; padding: 5px; }
     </style>
 </head>
 <body>
 
     <div class="panel">
-        <h2>📝 問題を追加する</h2>
+        <h2>📝 問題管理</h2>
         <input type="text" id="new-q-title" placeholder="例：三ずいの漢字を5つ！">
         <br>
         解答人数：
@@ -31,22 +31,19 @@
             <option value="3">3人</option>
         </select>
         <button class="btn-add" onclick="addQuestion()">追加</button>
-
-        <h3>登録済みリスト</h3>
         <div class="q-list" id="q-list-display"></div>
-        <button style="margin-top:10px; font-size:10px;" onclick="clearAllQuestions()">全て消去</button>
+        <button style="font-size:10px; margin-top:5px;" onclick="clearAll()">全消去</button>
     </div>
 
     <div class="panel">
         <h2>🎮 本番操作</h2>
         <button class="btn-main" onclick="openMain()">1. メイン画面を開く</button>
-        <div id="status" style="color: #2980b9; font-weight: bold; margin-bottom: 10px;">問題を選んでください</div>
+        <div id="status" style="font-weight:bold; color:#2980b9; margin-bottom:10px;">問題を選択してください</div>
         
         <button onclick="nextQuestion()">次の問題を表示</button>
         <button class="btn-start" onclick="startTimer()">タイマー開始</button>
 
-        <div id="correct-btns" style="margin-top: 20px; display: flex; gap: 5px; flex-wrap: wrap;">
-            </div>
+        <div id="correct-btns" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top:10px;"></div>
     </div>
 
 <script>
@@ -55,15 +52,13 @@
     let timeLeft = 30;
     let currentQIndex = -1;
     let questions = JSON.parse(localStorage.getItem('myQuestions')) || [];
+    let correctedStatus = {}; 
 
     function updateList() {
         const list = document.getElementById('q-list-display');
         list.innerHTML = '';
         questions.forEach((q, i) => {
-            list.innerHTML += `<div class="q-item">
-                <span>${i+1}. ${q.title} (${q.count}人)</span>
-                <span class="delete-btn" onclick="deleteQuestion(${i})">✖</span>
-            </div>`;
+            list.innerHTML += `<div class="q-item">${i+1}. ${q.title} (${q.count}人) <span style="color:red; cursor:pointer;" onclick="deleteQ(${i})">✖</span></div>`;
         });
         localStorage.setItem('myQuestions', JSON.stringify(questions));
     }
@@ -77,37 +72,46 @@
         updateList();
     }
 
-    function deleteQuestion(index) {
-        questions.splice(index, 1);
-        updateList();
-    }
-
-    function clearAllQuestions() {
-        if(confirm("全ての問題を削除しますか？")) {
-            questions = [];
-            updateList();
-        }
-    }
+    function deleteQ(i) { questions.splice(i, 1); updateList(); }
+    function clearAll() { if(confirm("消去しますか？")) { questions = []; updateList(); } }
 
     function openMain() {
-        mainWindow = window.open('./main.html', 'bomberMain', 'width=1000,height=700');
+        mainWindow = window.open('./main.html', 'bomberMain', 'width=1200,height=800');
     }
 
     function nextQuestion() {
         if (!mainWindow || mainWindow.closed) { alert("メイン画面を開いてください"); return; }
         currentQIndex++;
-        if (currentQIndex >= questions.length) { alert("全て終了！"); currentQIndex = -1; return; }
+        if (currentQIndex >= questions.length) { alert("終了！"); currentQIndex = -1; return; }
         
         const q = questions[currentQIndex];
+        correctedStatus = {}; 
         document.getElementById('status').innerText = `第${currentQIndex+1}問：${q.title}`;
         mainWindow.postMessage({ type: 'setup', title: q.title, count: q.count }, '*');
         
         const btnArea = document.getElementById('correct-btns');
         btnArea.innerHTML = '';
         for(let i=1; i<=q.count; i++) {
-            btnArea.innerHTML += `<button class="btn-correct" onclick="sendCorrect(${i})">${i}人目</button>`;
+            btnArea.innerHTML += `<button class="btn-correct" id="control-btn${i}" onclick="toggleCorrect(${i})">${i}人目</button>`;
         }
         resetTimer();
+    }
+
+    function toggleCorrect(num) {
+        if (!mainWindow) return;
+        const btn = document.getElementById('control-btn' + num);
+
+        if (correctedStatus[num]) {
+            // キャンセル
+            correctedStatus[num] = false;
+            btn.classList.remove('active-correct');
+            mainWindow.postMessage({ type: 'cancel', num: num }, '*');
+        } else {
+            // 正解
+            correctedStatus[num] = true;
+            btn.classList.add('active-correct');
+            mainWindow.postMessage({ type: 'correct', num: num }, '*');
+        }
     }
 
     function startTimer() {
@@ -119,17 +123,9 @@
         }, 1000);
     }
 
-    function sendCorrect(num) {
-        if (mainWindow) mainWindow.postMessage({ type: 'correct', num: num }, '*');
-    }
+    function resetTimer() { clearInterval(timerId); timerId = null; timeLeft = 30; }
 
-    function resetTimer() {
-        clearInterval(timerId);
-        timerId = null;
-        timeLeft = 30;
-    }
-
-    updateList(); // 初回表示
+    updateList();
 </script>
 </body>
 </html>
