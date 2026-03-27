@@ -35,8 +35,8 @@
         let isFinish = false;
         
         const startY = 40; 
-        // ★ 360px に変更
-        let deadLineY = window.innerHeight - 360; 
+        // ★ 380px に設定
+        let deadLineY = window.innerHeight - 380; 
 
         function updateBombPosition(timeLeft) {
             if (isFinish) return; 
@@ -70,7 +70,7 @@
                 bomb.style.transition = 'none';
                 bomb.style.top = startY + 'px';
                 
-                deadLineY = window.innerHeight - 360; 
+                deadLineY = window.innerHeight - 380; 
 
                 requestAnimationFrame(() => {
                     setTimeout(() => {
@@ -117,7 +117,7 @@
         });
 
         window.onresize = () => {
-            deadLineY = window.innerHeight - 360; 
+            deadLineY = window.innerHeight - 380; 
             const currentTime = parseInt(document.getElementById('timer').innerText);
             updateBombPosition(currentTime);
         };
