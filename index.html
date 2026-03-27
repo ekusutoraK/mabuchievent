@@ -13,7 +13,7 @@
         .btn-main { background: #2980b9; color: white; width: 100%; font-size: 16px; margin-bottom: 15px; }
         .btn-start { background: #e67e22; color: white; padding: 15px; width: 100%; font-size: 18px; margin: 10px 0; }
         .btn-correct { background: #bdc3c7; min-width: 70px; height: 60px; font-size: 16px; }
-        .active-correct { background: #27ae60 !important; color: white; }
+        .active-correct { background: #27ae60 !important; color: white; border: 2px solid #fff; }
         .q-list { margin-top: 15px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; font-size: 13px; }
         .q-item { margin-bottom: 5px; display: flex; justify-content: space-between; background: #eee; padding: 5px; }
     </style>
@@ -103,20 +103,12 @@
         if (!mainWindow || isCleared) return;
         const btn = document.getElementById('control-btn' + num);
 
-        // ロック機能：前の人が正解していない場合は押せない
-        if (!correctedStatus[num] && num > 1 && !correctedStatus[num - 1]) {
-            console.log("前の人がまだです");
-            return; 
-        }
-
-        if (correctedStatus[num]) {
-            // キャンセル（後ろの人が正解している場合はキャンセル不可にするのが安全）
-            if (correctedStatus[num + 1]) return; 
-            correctedStatus[num] = false;
-            btn.classList.remove('active-correct');
-            mainWindow.postMessage({ type: 'cancel', num: num }, '*');
-        } else {
-            // 正解
+        // 正解にする時のチェック：自分より前がすべて正解か
+        if (!correctedStatus[num]) {
+            for (let i = 1; i < num; i++) {
+                if (!correctedStatus[i]) return; 
+            }
+            // 正解処理
             correctedStatus[num] = true;
             btn.classList.add('active-correct');
             mainWindow.postMessage({ type: 'correct', num: num }, '*');
@@ -125,9 +117,15 @@
             const q = questions[currentQIndex];
             if (Object.values(correctedStatus).filter(v => v).length === q.count) {
                 isCleared = true;
-                clearInterval(timerId); // タイマー停止
+                clearInterval(timerId); // 即座にタイマー停止
                 timerId = null;
             }
+        } else {
+            // キャンセル処理：後ろの人が正解している場合はキャンセル不可
+            if (correctedStatus[num + 1]) return; 
+            correctedStatus[num] = false;
+            btn.classList.remove('active-correct');
+            mainWindow.postMessage({ type: 'cancel', num: num }, '*');
         }
     }
 
@@ -136,7 +134,11 @@
         timerId = setInterval(() => {
             timeLeft--;
             mainWindow.postMessage({ type: 'tick', time: timeLeft }, '*');
-            if (timeLeft <= 0) { clearInterval(timerId); timerId = null; mainWindow.postMessage({ type: 'bomb' }, '*'); }
+            if (timeLeft <= 0) { 
+                clearInterval(timerId); 
+                timerId = null; 
+                mainWindow.postMessage({ type: 'bomb' }, '*'); 
+            }
         }, 1000);
     }
 
