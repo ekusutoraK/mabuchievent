@@ -2,130 +2,83 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>操作パネル：ファイブボンバー</title>
+    <title>ファイブボンバー：メインステージ</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f9; padding: 20px; display: flex; gap: 20px; }
-        .panel { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); flex: 1; }
-        h2 { border-bottom: 2px solid #2980b9; padding-bottom: 10px; font-size: 18px; }
-        input, select { padding: 8px; margin: 5px 0; width: 80%; }
-        button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 5px; font-weight: bold; transition: 0.2s; }
-        .btn-add { background: #27ae60; color: white; }
-        .btn-main { background: #2980b9; color: white; width: 100%; font-size: 16px; margin-bottom: 15px; }
-        .btn-start { background: #e67e22; color: white; padding: 15px; width: 100%; font-size: 18px; margin: 10px 0; }
-        .btn-correct { background: #bdc3c7; min-width: 70px; height: 60px; font-size: 16px; }
-        .active-correct { background: #27ae60 !important; color: white; }
-        .q-list { margin-top: 15px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; font-size: 13px; }
-        .q-item { margin-bottom: 5px; display: flex; justify-content: space-between; background: #eee; padding: 5px; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; }
+        #q-area { background: rgba(20,20,20,0.95); padding: 25px; border-bottom: 5px solid #f1c40f; z-index: 10; position: relative; }
+        #q-title { font-size: 40px; font-weight: bold; color: #f1c40f; margin: 0; }
+        #timer-area { position: absolute; top: 120px; right: 40px; z-index: 10; border: 3px solid #ff3e3e; padding: 10px 20px; border-radius: 15px; background: rgba(0,0,0,0.8); }
+        #timer { font-size: 80px; color: #ff3e3e; font-weight: bold; font-family: monospace; margin: 0; }
+        .boxes { display: flex; justify-content: center; gap: 25px; position: absolute; bottom: 70px; width: 100%; z-index: 10; }
+        .answer-box { width: 170px; height: 110px; border: 4px solid #444; background: #111; font-size: 50px; display: flex; align-items: center; justify-content: center; border-radius: 15px; transition: 0.3s; color: #333; }
+        .correct { background: linear-gradient(145deg, #f1c40f, #e67e22); color: #fff !important; border-color: #fff; box-shadow: 0 0 30px #f1c40f; transform: scale(1.05); }
+
+        #bomb-container { position: absolute; width: 220px; height: 220px; z-index: 5; transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.1s linear; }
+        #bomb-image { width: 100%; height: 100%; object-fit: contain; animation: beat 0.8s infinite alternate; }
+        @keyframes beat { 0% { transform: scale(1); } 100% { transform: scale(1.15); filter: drop-shadow(0 0 30px red); } }
+
+        #bomb-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(200,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        #bomb-text { font-size: 160px; color: #f1c40f; font-weight: bold; transform: rotate(-10deg); text-shadow: 8px 8px 0px #000; }
     </style>
 </head>
 <body>
+    <div id="q-area"><p id="q-title">READY...</p></div>
+    <div id="timer-area"><p id="timer">30</p></div>
+    <div id="bomb-container"><img src="./bomb.png" id="bomb-image"></div>
+    <div class="boxes" id="box-container"></div>
+    <div id="bomb-overlay"><div id="bomb-text">BOMB!! 💣</div></div>
 
-    <div class="panel">
-        <h2>📝 問題管理</h2>
-        <input type="text" id="new-q-title" placeholder="例：三ずいの漢字を5つ！">
-        <br>
-        解答人数：
-        <select id="new-q-count">
-            <option value="5">5人</option>
-            <option value="4">4人</option>
-            <option value="3">3人</option>
-        </select>
-        <button class="btn-add" onclick="addQuestion()">追加</button>
-        <div class="q-list" id="q-list-display"></div>
-        <button style="font-size:10px; margin-top:5px;" onclick="clearAll()">全消去</button>
-    </div>
+    <script>
+        let currentTargetIdx = 1; 
+        let totalQuestions = 5;
+        const startY = 60; 
+        const deadLineY = window.innerHeight - 480; 
 
-    <div class="panel">
-        <h2>🎮 本番操作</h2>
-        <button class="btn-main" onclick="openMain()">1. メイン画面を開く</button>
-        <div id="status" style="font-weight:bold; color:#2980b9; margin-bottom:10px;">問題を選択してください</div>
-        
-        <button onclick="nextQuestion()">次の問題を表示</button>
-        <button class="btn-start" onclick="startTimer()">タイマー開始</button>
+        function updateBombPosition(timeLeft) {
+            const bomb = document.getElementById('bomb-container');
+            const targetBox = document.getElementById('box' + currentTargetIdx);
+            if (targetBox) {
+                const rect = targetBox.getBoundingClientRect();
+                const targetX = rect.left + (rect.width / 2) - 110; 
+                bomb.style.left = targetX + 'px';
+                const progress = (30 - timeLeft) / 30;
+                bomb.style.top = (startY + (deadLineY - startY) * progress) + 'px';
+            }
+        }
 
-        <div id="correct-btns" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top:10px;"></div>
-    </div>
-
-<script>
-    let mainWindow = null;
-    let timerId = null;
-    let timeLeft = 30;
-    let currentQIndex = -1;
-    let questions = JSON.parse(localStorage.getItem('myQuestions')) || [];
-    let correctedStatus = {}; 
-
-    function updateList() {
-        const list = document.getElementById('q-list-display');
-        list.innerHTML = '';
-        questions.forEach((q, i) => {
-            list.innerHTML += `<div class="q-item">${i+1}. ${q.title} (${q.count}人) <span style="color:red; cursor:pointer;" onclick="deleteQ(${i})">✖</span></div>`;
+        window.addEventListener('message', (e) => {
+            const d = e.data;
+            if (d.type === 'setup') {
+                document.getElementById('q-title').innerText = d.title;
+                const container = document.getElementById('box-container');
+                container.innerHTML = '';
+                totalQuestions = d.count;
+                currentTargetIdx = 1; 
+                for(let i=1; i<=d.count; i++) container.innerHTML += `<div class="answer-box" id="box${i}">${i}</div>`;
+                document.getElementById('bomb-overlay').style.display = 'none';
+                document.getElementById('bomb-container').style.display = 'block';
+                document.getElementById('timer').innerText = "30";
+                setTimeout(() => updateBombPosition(30), 150); 
+            } else if (d.type === 'tick') {
+                document.getElementById('timer').innerText = d.time;
+                updateBombPosition(d.time);
+            } else if (d.type === 'correct') {
+                document.getElementById('box' + d.num).classList.add('correct');
+                if (d.num < totalQuestions) {
+                    currentTargetIdx = d.num + 1;
+                    updateBombPosition(parseInt(document.getElementById('timer').innerText));
+                } else {
+                    document.getElementById('bomb-container').style.top = '-400px';
+                }
+            } else if (d.type === 'cancel') {
+                document.getElementById('box' + d.num).classList.remove('correct');
+                currentTargetIdx = d.num; // 爆弾をこの人の位置に戻す
+                updateBombPosition(parseInt(document.getElementById('timer').innerText));
+            } else if (d.type === 'bomb') {
+                document.getElementById('bomb-container').style.display = 'none';
+                document.getElementById('bomb-overlay').style.display = 'flex';
+            }
         });
-        localStorage.setItem('myQuestions', JSON.stringify(questions));
-    }
-
-    function addQuestion() {
-        const title = document.getElementById('new-q-title').value;
-        const count = parseInt(document.getElementById('new-q-count').value);
-        if(!title) return;
-        questions.push({ title, count });
-        document.getElementById('new-q-title').value = '';
-        updateList();
-    }
-
-    function deleteQ(i) { questions.splice(i, 1); updateList(); }
-    function clearAll() { if(confirm("消去しますか？")) { questions = []; updateList(); } }
-
-    function openMain() {
-        mainWindow = window.open('./main.html', 'bomberMain', 'width=1200,height=800');
-    }
-
-    function nextQuestion() {
-        if (!mainWindow || mainWindow.closed) { alert("メイン画面を開いてください"); return; }
-        currentQIndex++;
-        if (currentQIndex >= questions.length) { alert("終了！"); currentQIndex = -1; return; }
-        
-        const q = questions[currentQIndex];
-        correctedStatus = {}; 
-        document.getElementById('status').innerText = `第${currentQIndex+1}問：${q.title}`;
-        mainWindow.postMessage({ type: 'setup', title: q.title, count: q.count }, '*');
-        
-        const btnArea = document.getElementById('correct-btns');
-        btnArea.innerHTML = '';
-        for(let i=1; i<=q.count; i++) {
-            btnArea.innerHTML += `<button class="btn-correct" id="control-btn${i}" onclick="toggleCorrect(${i})">${i}人目</button>`;
-        }
-        resetTimer();
-    }
-
-    function toggleCorrect(num) {
-        if (!mainWindow) return;
-        const btn = document.getElementById('control-btn' + num);
-
-        if (correctedStatus[num]) {
-            // キャンセル
-            correctedStatus[num] = false;
-            btn.classList.remove('active-correct');
-            mainWindow.postMessage({ type: 'cancel', num: num }, '*');
-        } else {
-            // 正解
-            correctedStatus[num] = true;
-            btn.classList.add('active-correct');
-            mainWindow.postMessage({ type: 'correct', num: num }, '*');
-        }
-    }
-
-    function startTimer() {
-        if (timerId || !mainWindow) return;
-        timerId = setInterval(() => {
-            timeLeft--;
-            mainWindow.postMessage({ type: 'tick', time: timeLeft }, '*');
-            if (timeLeft <= 0) { clearInterval(timerId); mainWindow.postMessage({ type: 'bomb' }, '*'); }
-        }, 1000);
-    }
-
-    function resetTimer() { clearInterval(timerId); timerId = null; timeLeft = 30; }
-
-    updateList();
-</script>
+    </script>
 </body>
 </html>
