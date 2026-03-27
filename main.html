@@ -131,7 +131,7 @@
         window.onresize = () => {
             // deadLineYを再計算
             const oldDeadLineY = deadLineY;
-            deadLineY = window.innerHeight - 280; 
+            deadLineY = window.innerHeight - 140; 
             const currentTime = parseInt(document.getElementById('timer').innerText);
             updateBombPosition(currentTime);
         };
