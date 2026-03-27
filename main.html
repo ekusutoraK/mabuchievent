@@ -36,7 +36,7 @@
         const deadLineY = window.innerHeight - 480; 
 
         function updateBombPosition(timeLeft) {
-            if (isFinish) return; // クリア後は動かさない
+            if (isFinish) return; // クリア時は落下を止める
             const bomb = document.getElementById('bomb-container');
             const targetBox = document.getElementById('box' + currentTargetIdx);
             if (targetBox) {
@@ -73,13 +73,18 @@
                     currentTargetIdx = d.num + 1;
                     updateBombPosition(parseInt(document.getElementById('timer').innerText));
                 } else {
-                    // 全員正解
+                    // ★全員正解
                     isFinish = true;
-                    document.getElementById('bomb-container').style.transition = 'top 0.8s ease-in';
-                    document.getElementById('bomb-container').style.top = '-400px';
+                    // 秒数を固定
+                    const currentTime = document.getElementById('timer').innerText;
+                    document.getElementById('timer').innerText = currentTime;
+                    // 爆弾を上に消す
+                    const bomb = document.getElementById('bomb-container');
+                    bomb.style.transition = 'top 0.8s ease-in, left 0.4s ease-out';
+                    bomb.style.top = '-400px';
                 }
             } else if (d.type === 'cancel') {
-                if (isFinish) return; // クリア後はキャンセル不可
+                if (isFinish) return; 
                 document.getElementById('box' + d.num).classList.remove('correct');
                 currentTargetIdx = d.num; 
                 updateBombPosition(parseInt(document.getElementById('timer').innerText));
