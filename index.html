@@ -53,6 +53,7 @@
     let currentQIndex = -1;
     let questions = JSON.parse(localStorage.getItem('myQuestions')) || [];
     let correctedStatus = {}; 
+    let isCleared = false;
 
     function updateList() {
         const list = document.getElementById('q-list-display');
@@ -86,6 +87,7 @@
         
         const q = questions[currentQIndex];
         correctedStatus = {}; 
+        isCleared = false;
         document.getElementById('status').innerText = `第${currentQIndex+1}問：${q.title}`;
         mainWindow.postMessage({ type: 'setup', title: q.title, count: q.count }, '*');
         
@@ -98,11 +100,18 @@
     }
 
     function toggleCorrect(num) {
-        if (!mainWindow) return;
+        if (!mainWindow || isCleared) return;
         const btn = document.getElementById('control-btn' + num);
 
+        // ロック機能：前の人が正解していない場合は押せない
+        if (!correctedStatus[num] && num > 1 && !correctedStatus[num - 1]) {
+            console.log("前の人がまだです");
+            return; 
+        }
+
         if (correctedStatus[num]) {
-            // キャンセル
+            // キャンセル（後ろの人が正解している場合はキャンセル不可にするのが安全）
+            if (correctedStatus[num + 1]) return; 
             correctedStatus[num] = false;
             btn.classList.remove('active-correct');
             mainWindow.postMessage({ type: 'cancel', num: num }, '*');
@@ -111,15 +120,23 @@
             correctedStatus[num] = true;
             btn.classList.add('active-correct');
             mainWindow.postMessage({ type: 'correct', num: num }, '*');
+            
+            // 全員正解チェック
+            const q = questions[currentQIndex];
+            if (Object.values(correctedStatus).filter(v => v).length === q.count) {
+                isCleared = true;
+                clearInterval(timerId); // タイマー停止
+                timerId = null;
+            }
         }
     }
 
     function startTimer() {
-        if (timerId || !mainWindow) return;
+        if (timerId || !mainWindow || isCleared) return;
         timerId = setInterval(() => {
             timeLeft--;
             mainWindow.postMessage({ type: 'tick', time: timeLeft }, '*');
-            if (timeLeft <= 0) { clearInterval(timerId); mainWindow.postMessage({ type: 'bomb' }, '*'); }
+            if (timeLeft <= 0) { clearInterval(timerId); timerId = null; mainWindow.postMessage({ type: 'bomb' }, '*'); }
         }, 1000);
     }
 
