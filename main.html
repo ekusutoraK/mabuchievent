@@ -9,11 +9,11 @@
         #q-title { font-size: 40px; font-weight: bold; color: #f1c40f; margin: 0; }
         #timer-area { position: absolute; top: 120px; right: 40px; z-index: 10; border: 3px solid #ff3e3e; padding: 10px 20px; border-radius: 15px; background: rgba(0,0,0,0.8); }
         #timer { font-size: 80px; color: #ff3e3e; font-weight: bold; font-family: monospace; margin: 0; }
+        
         .boxes { display: flex; justify-content: center; gap: 25px; position: absolute; bottom: 70px; width: 100%; z-index: 10; }
         .answer-box { width: 170px; height: 110px; border: 4px solid #444; background: #111; font-size: 50px; display: flex; align-items: center; justify-content: center; border-radius: 15px; transition: 0.3s; color: #333; }
         .correct { background: linear-gradient(145deg, #f1c40f, #e67e22); color: #fff !important; border-color: #fff; box-shadow: 0 0 30px #f1c40f; transform: scale(1.05); }
 
-        /* ★爆弾：上下の動きやすさを上げるためtransitionのtopを調整 */
         #bomb-container { position: absolute; width: 220px; height: 220px; z-index: 5; transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.1s linear; }
         #bomb-image { width: 100%; height: 100%; object-fit: contain; animation: beat 0.8s infinite alternate; }
         @keyframes beat { 0% { transform: scale(1); } 100% { transform: scale(1.15); filter: drop-shadow(0 0 30px red); } }
@@ -34,14 +34,12 @@
         let totalQuestions = 5;
         let isFinish = false;
         
-        // ★修正ポイント：落下範囲の調整
-        const startY = 40; // 開始位置を少し高く（画面上部に寄せた）
+        const startY = 20; // 開始をさらに上に（天井ギリギリ）
         
-        // ★重要：deadLineY（爆発ライン）の調整
-        // 解答枠全体（.boxes）の高さがbottom:70pxにあるため、
-        // 以前の480pxから「280px」に引き算を減らしました。
-        // これで爆弾の下部が、光る枠の上部1/3程度に被る位置まで落ちます。
-        const deadLineY = window.innerHeight - 140; 
+        // ★ここを大幅に修正！
+        // window.innerHeight（画面全体の高さ）から「150px」しか引かない設定にしました。
+        // 解答枠の上が「地面から180px」なので、それよりさらに低い位置まで爆弾が突っ込みます。
+        let deadLineY = window.innerHeight - 150; 
 
         function updateBombPosition(timeLeft) {
             if (isFinish) return; 
@@ -52,9 +50,9 @@
                 const targetX = rect.left + (rect.width / 2) - 110; 
                 bomb.style.left = targetX + 'px';
                 
-                // 落下計算（ここは変更なし）
                 const progress = (30 - timeLeft) / 30;
-                const currentY = (startY + (deadLineY - startY) * progress);
+                // 落下計算
+                const currentY = startY + (deadLineY - startY) * progress;
                 bomb.style.top = currentY + 'px';
             }
         }
@@ -72,11 +70,12 @@
                 document.getElementById('bomb-overlay').style.display = 'none';
                 document.getElementById('bomb-container').style.display = 'block';
                 
-                // 爆弾の開始位置へ瞬時にセット（transitionを一時的に切る）
                 const bomb = document.getElementById('bomb-container');
                 bomb.style.transition = 'none';
                 bomb.style.top = startY + 'px';
-                // 描画後にtransitionを元に戻す
+                
+                deadLineY = window.innerHeight - 150; // 再計算
+
                 requestAnimationFrame(() => {
                     setTimeout(() => {
                         bomb.style.transition = 'left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.1s linear';
@@ -101,12 +100,8 @@
                     const currentTime = document.getElementById('timer').innerText;
                     document.getElementById('timer').innerText = currentTime;
                     const bomb = document.getElementById('bomb-container');
-                    // transitionの設定を一時的に変更（スライド移動をキャンセルし、上に逃げる動きを優先）
                     bomb.style.transition = 'top 0.8s ease-in, left 0s'; 
-                    // 一瞬待ってから上へ
-                    setTimeout(() => {
-                        bomb.style.top = '-400px';
-                    }, 10);
+                    setTimeout(() => { bomb.style.top = '-400px'; }, 10);
                 }
             } else if (d.type === 'cancel') {
                 if (isFinish) return; 
@@ -114,24 +109,19 @@
                 currentTargetIdx = d.num; 
                 updateBombPosition(parseInt(document.getElementById('timer').innerText));
             } else if (d.type === 'bomb') {
-                // 爆発時は瞬時に位置をdeadLineYに（tickとのずれを補正）
                 isFinish = true; 
                 const bomb = document.getElementById('bomb-container');
                 bomb.style.transition = 'none';
                 bomb.style.top = deadLineY + 'px';
-
                 setTimeout(() => {
                     bomb.style.display = 'none';
                     document.getElementById('bomb-overlay').style.display = 'flex';
-                }, 100); // 落下位置を確定させてから表示
+                }, 100);
             }
         });
 
-        // リサイズ時の補正（deadLineYが再計算されるため必要）
         window.onresize = () => {
-            // deadLineYを再計算
-            const oldDeadLineY = deadLineY;
-            deadLineY = window.innerHeight - 140; 
+            deadLineY = window.innerHeight - 150; 
             const currentTime = parseInt(document.getElementById('timer').innerText);
             updateBombPosition(currentTime);
         };
