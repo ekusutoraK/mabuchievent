@@ -13,6 +13,7 @@
         .answer-box { width: 170px; height: 110px; border: 4px solid #444; background: #111; font-size: 50px; display: flex; align-items: center; justify-content: center; border-radius: 15px; transition: 0.3s; color: #333; }
         .correct { background: linear-gradient(145deg, #f1c40f, #e67e22); color: #fff !important; border-color: #fff; box-shadow: 0 0 30px #f1c40f; transform: scale(1.05); }
 
+        /* ★爆弾：上下の動きやすさを上げるためtransitionのtopを調整 */
         #bomb-container { position: absolute; width: 220px; height: 220px; z-index: 5; transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.1s linear; }
         #bomb-image { width: 100%; height: 100%; object-fit: contain; animation: beat 0.8s infinite alternate; }
         @keyframes beat { 0% { transform: scale(1); } 100% { transform: scale(1.15); filter: drop-shadow(0 0 30px red); } }
@@ -32,19 +33,29 @@
         let currentTargetIdx = 1; 
         let totalQuestions = 5;
         let isFinish = false;
-        const startY = 60; 
-        const deadLineY = window.innerHeight - 480; 
+        
+        // ★修正ポイント：落下範囲の調整
+        const startY = 40; // 開始位置を少し高く（画面上部に寄せた）
+        
+        // ★重要：deadLineY（爆発ライン）の調整
+        // 解答枠全体（.boxes）の高さがbottom:70pxにあるため、
+        // 以前の480pxから「280px」に引き算を減らしました。
+        // これで爆弾の下部が、光る枠の上部1/3程度に被る位置まで落ちます。
+        const deadLineY = window.innerHeight - 280; 
 
         function updateBombPosition(timeLeft) {
-            if (isFinish) return; // クリア時は落下を止める
+            if (isFinish) return; 
             const bomb = document.getElementById('bomb-container');
             const targetBox = document.getElementById('box' + currentTargetIdx);
             if (targetBox) {
                 const rect = targetBox.getBoundingClientRect();
                 const targetX = rect.left + (rect.width / 2) - 110; 
                 bomb.style.left = targetX + 'px';
+                
+                // 落下計算（ここは変更なし）
                 const progress = (30 - timeLeft) / 30;
-                bomb.style.top = (startY + (deadLineY - startY) * progress) + 'px';
+                const currentY = (startY + (deadLineY - startY) * progress);
+                bomb.style.top = currentY + 'px';
             }
         }
 
@@ -60,28 +71,42 @@
                 for(let i=1; i<=d.count; i++) container.innerHTML += `<div class="answer-box" id="box${i}">${i}</div>`;
                 document.getElementById('bomb-overlay').style.display = 'none';
                 document.getElementById('bomb-container').style.display = 'block';
+                
+                // 爆弾の開始位置へ瞬時にセット（transitionを一時的に切る）
+                const bomb = document.getElementById('bomb-container');
+                bomb.style.transition = 'none';
+                bomb.style.top = startY + 'px';
+                // 描画後にtransitionを元に戻す
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        bomb.style.transition = 'left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.1s linear';
+                        updateBombPosition(30);
+                    }, 50);
+                });
+
                 document.getElementById('timer').innerText = "30";
-                setTimeout(() => updateBombPosition(30), 150); 
             } else if (d.type === 'tick') {
                 if (!isFinish) {
                     document.getElementById('timer').innerText = d.time;
                     updateBombPosition(d.time);
                 }
             } else if (d.type === 'correct') {
-                document.getElementById('box' + d.num).classList.add('correct');
+                const box = document.getElementById('box' + d.num);
+                if (box) box.classList.add('correct');
                 if (d.num < totalQuestions) {
                     currentTargetIdx = d.num + 1;
                     updateBombPosition(parseInt(document.getElementById('timer').innerText));
                 } else {
-                    // ★全員正解
                     isFinish = true;
-                    // 秒数を固定
                     const currentTime = document.getElementById('timer').innerText;
                     document.getElementById('timer').innerText = currentTime;
-                    // 爆弾を上に消す
                     const bomb = document.getElementById('bomb-container');
-                    bomb.style.transition = 'top 0.8s ease-in, left 0.4s ease-out';
-                    bomb.style.top = '-400px';
+                    // transitionの設定を一時的に変更（スライド移動をキャンセルし、上に逃げる動きを優先）
+                    bomb.style.transition = 'top 0.8s ease-in, left 0s'; 
+                    // 一瞬待ってから上へ
+                    setTimeout(() => {
+                        bomb.style.top = '-400px';
+                    }, 10);
                 }
             } else if (d.type === 'cancel') {
                 if (isFinish) return; 
@@ -89,10 +114,27 @@
                 currentTargetIdx = d.num; 
                 updateBombPosition(parseInt(document.getElementById('timer').innerText));
             } else if (d.type === 'bomb') {
-                document.getElementById('bomb-container').style.display = 'none';
-                document.getElementById('bomb-overlay').style.display = 'flex';
+                // 爆発時は瞬時に位置をdeadLineYに（tickとのずれを補正）
+                isFinish = true; 
+                const bomb = document.getElementById('bomb-container');
+                bomb.style.transition = 'none';
+                bomb.style.top = deadLineY + 'px';
+
+                setTimeout(() => {
+                    bomb.style.display = 'none';
+                    document.getElementById('bomb-overlay').style.display = 'flex';
+                }, 100); // 落下位置を確定させてから表示
             }
         });
+
+        // リサイズ時の補正（deadLineYが再計算されるため必要）
+        window.onresize = () => {
+            // deadLineYを再計算
+            const oldDeadLineY = deadLineY;
+            deadLineY = window.innerHeight - 280; 
+            const currentTime = parseInt(document.getElementById('timer').innerText);
+            updateBombPosition(currentTime);
+        };
     </script>
 </body>
 </html>
