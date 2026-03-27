@@ -31,10 +31,12 @@
     <script>
         let currentTargetIdx = 1; 
         let totalQuestions = 5;
+        let isFinish = false;
         const startY = 60; 
         const deadLineY = window.innerHeight - 480; 
 
         function updateBombPosition(timeLeft) {
+            if (isFinish) return; // クリア後は動かさない
             const bomb = document.getElementById('bomb-container');
             const targetBox = document.getElementById('box' + currentTargetIdx);
             if (targetBox) {
@@ -49,6 +51,7 @@
         window.addEventListener('message', (e) => {
             const d = e.data;
             if (d.type === 'setup') {
+                isFinish = false;
                 document.getElementById('q-title').innerText = d.title;
                 const container = document.getElementById('box-container');
                 container.innerHTML = '';
@@ -60,19 +63,25 @@
                 document.getElementById('timer').innerText = "30";
                 setTimeout(() => updateBombPosition(30), 150); 
             } else if (d.type === 'tick') {
-                document.getElementById('timer').innerText = d.time;
-                updateBombPosition(d.time);
+                if (!isFinish) {
+                    document.getElementById('timer').innerText = d.time;
+                    updateBombPosition(d.time);
+                }
             } else if (d.type === 'correct') {
                 document.getElementById('box' + d.num).classList.add('correct');
                 if (d.num < totalQuestions) {
                     currentTargetIdx = d.num + 1;
                     updateBombPosition(parseInt(document.getElementById('timer').innerText));
                 } else {
+                    // 全員正解
+                    isFinish = true;
+                    document.getElementById('bomb-container').style.transition = 'top 0.8s ease-in';
                     document.getElementById('bomb-container').style.top = '-400px';
                 }
             } else if (d.type === 'cancel') {
+                if (isFinish) return; // クリア後はキャンセル不可
                 document.getElementById('box' + d.num).classList.remove('correct');
-                currentTargetIdx = d.num; // 爆弾をこの人の位置に戻す
+                currentTargetIdx = d.num; 
                 updateBombPosition(parseInt(document.getElementById('timer').innerText));
             } else if (d.type === 'bomb') {
                 document.getElementById('bomb-container').style.display = 'none';
