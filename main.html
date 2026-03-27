@@ -10,10 +10,37 @@
         #timer-area { position: absolute; top: 120px; right: 40px; z-index: 10; border: 3px solid #ff3e3e; padding: 10px 20px; border-radius: 15px; background: rgba(0,0,0,0.8); }
         #timer { font-size: 80px; color: #ff3e3e; font-weight: bold; font-family: monospace; margin: 0; }
         
-        .boxes { display: flex; justify-content: center; gap: 25px; position: absolute; bottom: 70px; width: 100%; z-index: 10; }
-        .answer-box { width: 170px; height: 110px; border: 4px solid #444; background: #111; font-size: 50px; display: flex; align-items: center; justify-content: center; border-radius: 15px; transition: 0.3s; color: #333; }
+        /* ★ boxesのレイアウト修正：左右に20pxの余白を持たせ、要素をいっぱいに広げる */
+        .boxes { 
+            display: flex; 
+            justify-content: center; 
+            gap: 20px; 
+            position: absolute; 
+            bottom: 70px; 
+            left: 20px;
+            right: 20px;
+            z-index: 10; 
+        }
+
+        /* ★ answer-boxの幅を可変（flex: 1）に変更 */
+        .answer-box { 
+            flex: 1; /* 画面幅に合わせて自動で伸び縮みする */
+            height: 110px; 
+            max-width: 300px; /* 広がりすぎ防止（お好みで調整） */
+            border: 4px solid #444; 
+            background: #111; 
+            font-size: 50px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 15px; 
+            transition: 0.3s; 
+            color: #333; 
+        }
+
         .correct { background: linear-gradient(145deg, #f1c40f, #e67e22); color: #fff !important; border-color: #fff; box-shadow: 0 0 30px #f1c40f; transform: scale(1.05); }
 
+        /* 爆弾のサイズ */
         #bomb-container { position: absolute; width: 220px; height: 220px; z-index: 5; transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.1s linear; }
         #bomb-image { width: 100%; height: 100%; object-fit: contain; animation: beat 0.8s infinite alternate; }
         @keyframes beat { 0% { transform: scale(1); } 100% { transform: scale(1.15); filter: drop-shadow(0 0 30px red); } }
@@ -35,7 +62,6 @@
         let isFinish = false;
         
         const startY = 40; 
-        // ★ 380px に設定
         let deadLineY = window.innerHeight - 380; 
 
         function updateBombPosition(timeLeft) {
@@ -44,6 +70,7 @@
             const targetBox = document.getElementById('box' + currentTargetIdx);
             if (targetBox) {
                 const rect = targetBox.getBoundingClientRect();
+                // ★ 計算修正：枠の左端(rect.left) + 枠幅の半分(rect.width/2) - 爆弾幅の半分(110)
                 const targetX = rect.left + (rect.width / 2) - 110; 
                 bomb.style.left = targetX + 'px';
                 
@@ -72,12 +99,11 @@
                 
                 deadLineY = window.innerHeight - 380; 
 
-                requestAnimationFrame(() => {
-                    setTimeout(() => {
-                        bomb.style.transition = 'left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.1s linear';
-                        updateBombPosition(30);
-                    }, 50);
-                });
+                // ★ 枠が生成されてから座標を計算するために少し待つ
+                setTimeout(() => {
+                    bomb.style.transition = 'left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.1s linear';
+                    updateBombPosition(30);
+                }, 100);
 
                 document.getElementById('timer').innerText = "30";
             } else if (d.type === 'tick') {
@@ -116,6 +142,7 @@
             }
         });
 
+        // 画面サイズが変わった時に枠の位置を再計算する
         window.onresize = () => {
             deadLineY = window.innerHeight - 380; 
             const currentTime = parseInt(document.getElementById('timer').innerText);
