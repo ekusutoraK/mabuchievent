@@ -34,12 +34,9 @@
         let totalQuestions = 5;
         let isFinish = false;
         
-        const startY = 20; // 開始をさらに上に（天井ギリギリ）
-        
-        // ★ここを大幅に修正！
-        // window.innerHeight（画面全体の高さ）から「150px」しか引かない設定にしました。
-        // 解答枠の上が「地面から180px」なので、それよりさらに低い位置まで爆弾が突っ込みます。
-        let deadLineY = window.innerHeight - 150; 
+        const startY = 40; 
+        // ★ご要望通り、画面下から280pxの位置を終点に設定
+        let deadLineY = window.innerHeight - 280; 
 
         function updateBombPosition(timeLeft) {
             if (isFinish) return; 
@@ -51,7 +48,6 @@
                 bomb.style.left = targetX + 'px';
                 
                 const progress = (30 - timeLeft) / 30;
-                // 落下計算
                 const currentY = startY + (deadLineY - startY) * progress;
                 bomb.style.top = currentY + 'px';
             }
@@ -74,7 +70,7 @@
                 bomb.style.transition = 'none';
                 bomb.style.top = startY + 'px';
                 
-                deadLineY = window.innerHeight - 150; // 再計算
+                deadLineY = window.innerHeight - 280; 
 
                 requestAnimationFrame(() => {
                     setTimeout(() => {
@@ -121,7 +117,7 @@
         });
 
         window.onresize = () => {
-            deadLineY = window.innerHeight - 150; 
+            deadLineY = window.innerHeight - 280; 
             const currentTime = parseInt(document.getElementById('timer').innerText);
             updateBombPosition(currentTime);
         };
